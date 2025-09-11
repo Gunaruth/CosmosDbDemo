@@ -1,4 +1,5 @@
-﻿using CosmosDbDemo.Interfaces;
+﻿using CosmosDbDemo.Interface;
+using CosmosDbDemo.Interfaces;
 using CosmosDbDemo.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,14 +11,14 @@ namespace CosmosDbDemo.Controllers
     {
         #region Declaration
 
-        private readonly IUserRepository _userRepository;
+        private readonly IRepository<GavUser> _repository;
 
         #endregion
 
         #region Constructor
-        public UserController(IUserRepository userRepository)
+        public UserController(IRepository<GavUser> repository)
         {
-            _userRepository = userRepository;
+            _repository = repository;
         }
         #endregion
 
@@ -26,8 +27,8 @@ namespace CosmosDbDemo.Controllers
         /// Get
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
-        public async Task<IActionResult> Get() => Ok(await _userRepository.GetUsers());
+        [HttpGet("GetAllUsers")]
+        public async Task<IActionResult> Get() => Ok(await _repository.GetAllAsync());
         #endregion
 
         #region Add UserDetail
@@ -36,12 +37,11 @@ namespace CosmosDbDemo.Controllers
         /// </summary>
         /// <param name="userReques"></param>
         /// <returns></returns>
-        [HttpPost]
-        public async Task<GavUser> AddUserDetail(GavUser userReques)
+        [HttpPost("AddUser")]
+        public async Task<IActionResult> AddUserDetail(GavUser userRequest)
         {
-            GavUser userResponse = await _userRepository.AdduserDetail(userReques);
-            return userResponse;
-            //return CreatedAtAction(nameof(Get), new { id = userReques.userId }, userReques);
+            var userResponse = await _repository.AddAsync(userRequest);
+            return CreatedAtAction(nameof(Get), new { id = userRequest.userId }, userRequest);
         }
         #endregion
 
@@ -53,11 +53,11 @@ namespace CosmosDbDemo.Controllers
         /// <param name="userRequest"></param>
         /// <returns></returns>
 
-        [HttpPut]
-        public async Task<GavUser> UpdateUserDetail(GavUser userRequest)
+        [HttpPut("UpdateUser")]
+        public async Task<IActionResult> UpdateUserDetail(GavUser userRequest)
         {
-            var response = await _userRepository.UpdateUserDetail(userRequest);
-            return response;
+            var updated = await _repository.UpdateAsync(userRequest.id,userRequest);
+            return updated == null ? NotFound() : Ok(updated);
         }
         #endregion
 
@@ -71,7 +71,7 @@ namespace CosmosDbDemo.Controllers
         [HttpGet("{id}/{userId}")]
         public async Task<IActionResult> GetUserDetailsById(string id, string userId)
         {
-            var item = await _userRepository.GetUserByIdAndUserId(id, userId);
+            var item = await _repository.GetByIdAsync(id, userId);
             return item == null ? NotFound() : Ok(item);
         }
         #endregion
@@ -87,7 +87,7 @@ namespace CosmosDbDemo.Controllers
         [HttpDelete("{id}/{userId}")]
         public async Task<IActionResult> DeleteUser(string id, string userId)
         {
-            bool isDeleted = await _userRepository.DeleteUser(id, userId);
+            bool isDeleted = await _repository.DeleteAsync(id, userId);
 
             if (isDeleted)
             {

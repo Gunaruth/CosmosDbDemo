@@ -1,26 +1,26 @@
-﻿using CosmosDbDemo.Interfaces;
+﻿using CosmosDbDemo.Interface;
+using CosmosDbDemo.Interfaces;
 using CosmosDbDemo.Models;
 using Microsoft.Azure.Cosmos;
 using System.Net;
 
 namespace CosmosDbDemo.Repository
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : IRepository<GavUser>
     {
         #region Declaration
 
         private readonly Container _container;
 
+        private readonly ICosmosRepository _cosmosRepository;
+        private const string ContainerName = "usersContainer";
+
         #endregion
 
         #region Constructor
-        public UserRepository(CosmosClient cosmosClient, IConfiguration config)
+        public UserRepository(ICosmosRepository cosmosRepository)
         {
-            var databaseName = config["CosmosDb:DatabaseName"];
-            var containerName = config["CosmosDb:ContainerName"];
-
-            EnsureDatabaseAndContainerExist(cosmosClient, databaseName, containerName).GetAwaiter().GetResult();
-            _container = cosmosClient.GetContainer(databaseName, containerName);
+            _cosmosRepository = cosmosRepository;
         }
         #endregion
 
@@ -30,7 +30,7 @@ namespace CosmosDbDemo.Repository
         /// </summary>
         /// <param name="userRequest"></param>
         /// <returns></returns>
-        public async Task<GavUser> AdduserDetail(GavUser userRequest)
+        public async Task<GavUser> AddAsync(GavUser userRequest)
         {
             if (string.IsNullOrEmpty(userRequest.userId))
             {
@@ -40,8 +40,7 @@ namespace CosmosDbDemo.Repository
             {
                 userRequest.id = Guid.NewGuid().ToString();
             }
-            ItemResponse<GavUser> response = await _container.CreateItemAsync(userRequest, new PartitionKey(userRequest.userId));
-            return response.Resource;
+            return await _cosmosRepository.AddAsync(ContainerName, userRequest);
         }
         #endregion
 
@@ -50,36 +49,9 @@ namespace CosmosDbDemo.Repository
         /// GetItemsAsync
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<GavUser>> GetUsers()
+        public async Task<IEnumerable<GavUser>> GetAllAsync()
         {
-            var query = _container.GetItemQueryIterator<GavUser>("SELECT * FROM c");
-            var results = new List<GavUser>();
-            while (query.HasMoreResults)
-            {
-                var response = await query.ReadNextAsync();
-                results.AddRange(response);
-            }
-            return results;
-        }
-        #endregion
-
-        #region Ensure Database And Container Exist
-        /// <summary>
-        /// EnsureDatabaseAndContainerExist
-        /// </summary>
-        /// <param name="cosmosClient"></param>
-        /// <param name="databaseName"></param>
-        /// <param name="containerName"></param>
-        /// <returns></returns>
-        private static async Task EnsureDatabaseAndContainerExist(CosmosClient cosmosClient, string databaseName, string containerName)
-        {
-            // Create the database if it does not exist
-            var databaseResponse = await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseName);
-            Console.WriteLine($"Database {databaseName} created or already exists.");
-
-            // Create the container if it does not exist, with partition key on 'userId'
-            await databaseResponse.Database.CreateContainerIfNotExistsAsync(containerName, "/userId");
-            Console.WriteLine($"Container {containerName} created or already exists.");
+            return await _cosmosRepository.GetAllAsync<GavUser>(ContainerName);
         }
         #endregion
 
@@ -90,7 +62,7 @@ namespace CosmosDbDemo.Repository
         /// <param name="id"></param>
         /// <param name="userRequest"></param>
         /// <returns></returns>
-        public async Task<GavUser> UpdateUserDetail(GavUser userRequest)
+        public async Task<GavUser> UpdateAsync(string id, GavUser userRequest)
         {
             GavUser response = new GavUser();
             try
@@ -120,10 +92,8 @@ namespace CosmosDbDemo.Repository
                     {
                         existingUser.engagement = userRequest.engagement;
                     }
-                    ItemResponse<GavUser> updatedResponse = await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
-
-                    // Return the updated document
-                    response = updatedResponse.Resource;
+                    response = await _cosmosRepository.UpdateAsync(ContainerName, userRequest.userId, existingUser);
+                    //  await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
                 }
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -144,13 +114,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="userId"></param>
         /// <returns></returns>
 
-        public async Task<GavUser> GetUserByIdAndUserId(string id, string userId)
+        public async Task<GavUser> GetByIdAsync(string id, string userId)
         {
             try
             {
                 // Fetch the document by id and partition key
-                ItemResponse<GavUser> response = await _container.ReadItemAsync<GavUser>(id, new PartitionKey(userId));
-                return response.Resource;
+                return await _cosmosRepository.GetByIdAsync<GavUser>(ContainerName, id, userId);
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
@@ -168,26 +137,21 @@ namespace CosmosDbDemo.Repository
         /// <param name="id"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public async Task<bool> DeleteUser(string id, string userId)
+        public async Task<bool> DeleteAsync(string id, string userId)
         {
             try
             {
                 // Attempt to delete the document using id and partition key
-                await _container.DeleteItemAsync<User>(id, new PartitionKey(userId));
+                await _cosmosRepository.DeleteAsync<GavUser>(ContainerName, id, userId);
 
-                // If deletion succeeds, return true
                 return true;
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // Handle case when the document is not found
-                Console.WriteLine($"Document with id: {id} not found in partition: {userId}");
                 return false;  // Return false if the document is not found
             }
             catch (Exception ex)
             {
-                // Handle other errors
-                Console.WriteLine($"Error occurred: {ex.Message}");
                 return false;  // Return false in case of error
             }
         }
