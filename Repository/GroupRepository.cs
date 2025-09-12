@@ -126,6 +126,7 @@ namespace CosmosDbDemo.Repository
             {
                 // Attempt to delete the document using id and partition key
                 await _cosmosRepository.DeleteAsync<AuditEngagement>(ContainerName, id, engagementId);
+
                 return true;
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
