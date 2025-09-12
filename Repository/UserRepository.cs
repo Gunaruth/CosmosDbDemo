@@ -10,8 +10,6 @@ namespace CosmosDbDemo.Repository
     {
         #region Declaration
 
-        private readonly Container _container;
-
         private readonly ICosmosRepository _cosmosRepository;
         private const string ContainerName = "usersContainer";
 
@@ -68,30 +66,17 @@ namespace CosmosDbDemo.Repository
             try
             {
                 // Fetch the existing document by id and partition key
-                ItemResponse<GavUser> userResponse = await _container.ReadItemAsync<GavUser>(userRequest.id, new PartitionKey(userRequest.userId));
+                var existingUser = await GetByIdAsync(userRequest.id, userRequest.userId);
 
                 // If the document is found, we can update it
-                var existingUser = userResponse.Resource;
+                //var existingUser = userResponse.Resource;
 
                 // Modify the properties of the existing user based on updatedUser
                 if (existingUser != null)
                 {
                     existingUser.userdetails = userRequest.userdetails;
-
-                    if (existingUser?.engagement?.Count > 0 && userRequest.engagement.Count > 0)
-                    {
-                        var newEngagements = userRequest.engagement.Where(newEngagement => !existingUser.engagement
-                                                .Any(existing => existing.engagementid == newEngagement.engagementid &&
-                                                existing.type == newEngagement.type)).ToList();
-                        if (newEngagements.Count > 0)
-                        {
-                            existingUser.engagement.AddRange(newEngagements);
-                        }
-                    }
-                    else
-                    {
-                        existingUser.engagement = userRequest.engagement;
-                    }
+                    existingUser.engagement = userRequest.engagement;
+                    
                     response = await _cosmosRepository.UpdateAsync(ContainerName, userRequest.userId, existingUser);
                     //  await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
                 }
