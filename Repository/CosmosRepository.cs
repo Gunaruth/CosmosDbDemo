@@ -82,7 +82,7 @@ namespace CosmosDbDemo.Repository
 
         private string GetId<T>(T entity)
         {
-            var prop = typeof(T).GetProperty("Id");
+            var prop = typeof(T).GetProperty("userId")?? typeof(T).GetProperty("engagementId");
             return prop?.GetValue(entity)?.ToString();
         }
     }

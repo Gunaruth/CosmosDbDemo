@@ -5,7 +5,7 @@ using System.Net;
 
 namespace CosmosDbDemo.Repository
 {
-    public class ComponentRepository : IRepository<AuditEngagement>
+    public class ComponentRepository : IRepository<ComponentEngagement>
     {
         #region Declaration
         private readonly ICosmosRepository _cosmosRepository;
@@ -24,11 +24,11 @@ namespace CosmosDbDemo.Repository
         /// </summary>
         /// <param name="auditEngagement"></param>
         /// <returns></returns>
-        public async Task<AuditEngagement> AddAsync(AuditEngagement auditEngagement)
+        public async Task<ComponentEngagement> AddAsync(ComponentEngagement auditEngagement)
         {
-            if (string.IsNullOrEmpty(auditEngagement.userId))
+            if (string.IsNullOrEmpty(auditEngagement.engagementId))
             {
-                auditEngagement.userId = Guid.NewGuid().ToString();
+                auditEngagement.engagementId = Guid.NewGuid().ToString();
             }
             if (string.IsNullOrEmpty(auditEngagement.id))
             {
@@ -43,9 +43,9 @@ namespace CosmosDbDemo.Repository
         /// GetAllAsync
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<AuditEngagement>> GetAllAsync()
+        public async Task<IEnumerable<ComponentEngagement>> GetAllAsync()
         {
-            return await _cosmosRepository.GetAllAsync<AuditEngagement>(ContainerName);
+            return await _cosmosRepository.GetAllAsync<ComponentEngagement>(ContainerName);
         }
         #endregion
 
@@ -54,46 +54,32 @@ namespace CosmosDbDemo.Repository
         /// UpdateComponentDetail
         /// </summary>
         /// <param name="id"></param>
-        /// <param name="auditEngagement"></param>
+        /// <param name="compEngagement"></param>
         /// <returns></returns>
-        public async Task<AuditEngagement> UpdateAsync(string id, AuditEngagement auditEngagement)
+        public async Task<ComponentEngagement> UpdateAsync(string id, ComponentEngagement compEngagement)
         {
-            AuditEngagement response = new AuditEngagement();
+            ComponentEngagement response = new ComponentEngagement();
             try
             {
                 // Fetch the existing document by id and partition key
-                var existingUser = await _cosmosRepository.GetByIdAsync<AuditEngagement>(ContainerName, auditEngagement.id, auditEngagement.userId);
-
-                // If the document is found, we can update it
-                //var existingUser = userResponse.Resource;
-
-                // Modify the properties of the existing user based on updatedUser
-                //if (existingUser != null)
-                //{
-                //    existingUser.userdetails = userRequest.userdetails;
-
-                //    if (existingUser?.engagement?.Count > 0 && userRequest.engagement.Count > 0)
-                //    {
-                //        var newEngagements = userRequest.engagement.Where(newEngagement => !existingUser.engagement
-                //                                .Any(existing => existing.engagementid == newEngagement.engagementid &&
-                //                                existing.type == newEngagement.type)).ToList();
-                //        if (newEngagements.Count > 0)
-                //        {
-                //            existingUser.engagement.AddRange(newEngagements);
-                //        }
-                //    }
-                //    else
-                //    {
-                //        existingUser.engagement = userRequest.engagement;
-                //    }
-                //    response = await _cosmosRepository.UpdateAsync(ContainerName, userRequest.userId, existingUser);
-                //    //  await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
-                //}
+                var existingComponent = await GetByIdAsync(compEngagement.id, compEngagement.engagementId);
+                if (existingComponent != null)
+                {
+                    existingComponent.engagementType = compEngagement.engagementType;
+                    existingComponent.location = compEngagement.location;
+                    existingComponent.groupLinked = compEngagement.groupLinked;
+                    existingComponent.status = compEngagement.status;
+                    existingComponent.opinionId = compEngagement.opinionId;
+                    existingComponent.opinionOptions = compEngagement.opinionOptions;
+                    existingComponent.team = compEngagement.team;
+                    response = await _cosmosRepository.UpdateAsync(ContainerName, compEngagement.engagementId, existingComponent);
+                }
+                
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 // Handle the case when the document is not found
-                Console.WriteLine($"Document with id: {auditEngagement.id} not found in partition: {auditEngagement.userId}");
+                Console.WriteLine($"Document with id: {compEngagement.id} not found in partition: {compEngagement.engagementId}");
                 return null;  // Return null if document is not found
             }
             return response;
@@ -108,12 +94,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="engagementId"></param>
         /// <returns></returns>
 
-        public async Task<AuditEngagement> GetByIdAsync(string id, string engagementId)
+        public async Task<ComponentEngagement> GetByIdAsync(string id, string engagementId)
         {
             try
             {
                 // Fetch the document by id and partition key
-                return await _cosmosRepository.GetByIdAsync<AuditEngagement>(ContainerName, id, engagementId);
+                return await _cosmosRepository.GetByIdAsync<ComponentEngagement>(ContainerName, id, engagementId);
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
@@ -136,7 +122,7 @@ namespace CosmosDbDemo.Repository
             try
             {
                 // Attempt to delete the document using id and partition key
-                await _cosmosRepository.DeleteAsync<AuditEngagement>(ContainerName, id, engagementId);
+                await _cosmosRepository.DeleteAsync<ComponentEngagement>(ContainerName, id, engagementId);
 
                 return true;
             }

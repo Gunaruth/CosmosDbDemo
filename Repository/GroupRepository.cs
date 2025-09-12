@@ -26,9 +26,9 @@ namespace CosmosDbDemo.Repository
         /// <returns></returns>
         public async Task<AuditEngagement> AddAsync(AuditEngagement auditEngagement)
         {
-            if (string.IsNullOrEmpty(auditEngagement.engagement_id))
+            if (string.IsNullOrEmpty(auditEngagement.engagementId))
             {
-                auditEngagement.userId = Guid.NewGuid().ToString();
+                auditEngagement.engagementId = Guid.NewGuid().ToString();
             }
             if (string.IsNullOrEmpty(auditEngagement.id))
             {
@@ -62,38 +62,27 @@ namespace CosmosDbDemo.Repository
             try
             {
                 // Fetch the existing document by id and partition key
-                var existingUser = await _cosmosRepository.GetByIdAsync<AuditEngagement>(ContainerName, auditEngagement.id, auditEngagement.userId);
-
-                // If the document is found, we can update it
-                //var existingUser = userResponse.Resource;
-
-                // Modify the properties of the existing user based on updatedUser
-                //if (existingUser != null)
-                //{
-                //    existingUser.userdetails = userRequest.userdetails;
-
-                //    if (existingUser?.engagement?.Count > 0 && userRequest.engagement.Count > 0)
-                //    {
-                //        var newEngagements = userRequest.engagement.Where(newEngagement => !existingUser.engagement
-                //                                .Any(existing => existing.engagementid == newEngagement.engagementid &&
-                //                                existing.type == newEngagement.type)).ToList();
-                //        if (newEngagements.Count > 0)
-                //        {
-                //            existingUser.engagement.AddRange(newEngagements);
-                //        }
-                //    }
-                //    else
-                //    {
-                //        existingUser.engagement = userRequest.engagement;
-                //    }
-                //    response = await _cosmosRepository.UpdateAsync(ContainerName, userRequest.userId, existingUser);
-                //    //  await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
-                //}
+                var existingUser = await _cosmosRepository.GetByIdAsync<AuditEngagement>(ContainerName, auditEngagement.id, auditEngagement.engagementId);
+                if (existingUser != null)
+                {
+                    existingUser.engagementType = auditEngagement.engagementType;
+                    existingUser.location = auditEngagement.location;
+                    existingUser.componentsLinked = auditEngagement.componentsLinked;
+                    existingUser.status = auditEngagement.status;
+                    existingUser.opinionId = auditEngagement.opinionId;
+                    existingUser.team = auditEngagement.team;
+                    existingUser.isGroup = auditEngagement.isGroup;
+                    response = await _cosmosRepository.UpdateAsync(ContainerName, auditEngagement.engagementId, existingUser);
+                }
+                else
+                {
+                    return null;
+                }
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 // Handle the case when the document is not found
-                Console.WriteLine($"Document with id: {auditEngagement.id} not found in partition: {auditEngagement.userId}");
+                Console.WriteLine($"Document with id: {auditEngagement.id} not found in partition: {auditEngagement.engagementId}");
                 return null;  // Return null if document is not found
             }
             return response;
@@ -137,7 +126,6 @@ namespace CosmosDbDemo.Repository
             {
                 // Attempt to delete the document using id and partition key
                 await _cosmosRepository.DeleteAsync<AuditEngagement>(ContainerName, id, engagementId);
-
                 return true;
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)

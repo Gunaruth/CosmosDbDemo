@@ -1,6 +1,6 @@
 ﻿namespace CosmosDbDemo.Models
 {
-    public class AuditEngagement
+    public class ComponentEngagement
     {
         public string id { get; set; }
         public string engagementId { get; set; } // Partition key
@@ -8,29 +8,18 @@
         public string createdBy { get; set; }
         public DateTime createdAt { get; set; }
         public string status { get; set; }
-        public bool isGroup { get; set; }
         public string opinionId { get; set; }
         public Location location { get; set; }
-        public List<ComponentLinked> componentsLinked { get; set; }
+        public List<ComponentLinked> groupLinked { get; set; }
+        public List<OpinionOption> opinionOptions { get; set; }
         public List<TeamMember> team { get; set; }
     }
-
-    public class Location
+    public class OpinionOption
     {
-        public double lat { get; set; }
-        public double lng { get; set; }
-    }
-
-    public class ComponentLinked
-    {
+        public string engagementId { get; set; } // Partition key
+        public string componentId { get; set; }
+        public string opinionId { get; set; }
         public string name { get; set; }
         public string status { get; set; }
     }
-
-    public class TeamMember
-    {
-        public string user { get; set; }
-        public string role { get; set; }
-    }
-
 }
