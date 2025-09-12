@@ -1,5 +1,4 @@
 ﻿using CosmosDbDemo.Interface;
-using CosmosDbDemo.Interfaces;
 using CosmosDbDemo.Models;
 using Microsoft.AspNetCore.Mvc;
 

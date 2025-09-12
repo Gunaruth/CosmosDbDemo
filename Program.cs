@@ -20,7 +20,8 @@ builder.Services.AddSingleton(s =>
 builder.Services.AddSingleton<ICosmosRepository>(sp => sp.GetRequiredService<CosmosRepository>());
 builder.Services.AddScoped<IRepository<GavUser>, UserRepository>();
 builder.Services.AddScoped<IRepository<AuditEngagement>, GroupRepository>();
-builder.Services.AddScoped<IRepository<AuditEngagement>, ComponentRepository>();
+builder.Services.AddScoped<IRepository<ComponentEngagement>, ComponentRepository>();
+builder.Services.AddScoped<IRepository<CommunicationDetails>, CommunicationRepository>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

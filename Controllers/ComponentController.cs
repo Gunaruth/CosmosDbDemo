@@ -9,8 +9,8 @@ namespace CosmosDbDemo.Controllers
     [ApiController]
     public class ComponentController : ControllerBase
     {
-        private readonly IRepository<AuditEngagement> _repository;
-        public ComponentController(IRepository<AuditEngagement> repository)
+        private readonly IRepository<ComponentEngagement> _repository;
+        public ComponentController(IRepository<ComponentEngagement> repository)
         {
             _repository = repository;
         }
@@ -27,13 +27,13 @@ namespace CosmosDbDemo.Controllers
         /// <summary>
         /// AddComponent
         /// </summary>
-        /// <param name="auditEngagement"></param>
+        /// <param name="componentEngagement"></param>
         /// <returns></returns>
         [HttpPost("AddComponent")]
-        public async Task<IActionResult> AddComponent(AuditEngagement auditEngagement)
+        public async Task<IActionResult> AddComponent(ComponentEngagement componentEngagement)
         {
-            var userResponse = await _repository.AddAsync(auditEngagement);
-            return CreatedAtAction(nameof(Get), new { id = auditEngagement.id }, auditEngagement);
+            var userResponse = await _repository.AddAsync(componentEngagement);
+            return CreatedAtAction(nameof(Get), new { id = componentEngagement.id }, componentEngagement);
         }
         #endregion
 
@@ -41,13 +41,13 @@ namespace CosmosDbDemo.Controllers
         /// <summary>
         /// UpdateComponent
         /// </summary>
-        /// <param name="auditEngagement"></param>
+        /// <param name="componentEngagement"></param>
         /// <returns></returns>
 
         [HttpPut("UpdateComponent")]
-        public async Task<IActionResult> UpdateComponent(AuditEngagement auditEngagement)
+        public async Task<IActionResult> UpdateComponent(ComponentEngagement componentEngagement)
         {
-            var updated = await _repository.UpdateAsync(auditEngagement.id, auditEngagement);
+            var updated = await _repository.UpdateAsync(componentEngagement.id, componentEngagement);
             return updated == null ? NotFound() : Ok(updated);
         }
         #endregion
@@ -82,11 +82,11 @@ namespace CosmosDbDemo.Controllers
 
             if (isDeleted)
             {
-                return Ok(new { message = "Group deleted successfully" });
+                return Ok(new { message = "Component deleted successfully" });
             }
             else
             {
-                return NotFound(new { message = "User not found" });
+                return NotFound(new { message = "Component not found" });
             }
         }
         #endregion
