@@ -33,14 +33,4 @@
         public string user { get; set; }
         public string role { get; set; }
     }
-
-    public class OpinionOption
-    {
-        public string engagement_id { get; set; } // Partition key
-        public string component_id { get; set; }
-        public string opinionid { get; set; }
-        public string name { get; set; }
-        public string status { get; set; }
-    }
-
 }
