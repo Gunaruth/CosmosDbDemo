@@ -6,19 +6,23 @@ using System.Net;
 
 namespace CosmosDbDemo.Repository
 {
-    public class UserRepository : IRepository<GavUser>
+    public class UserRepository : IUserRepository
     {
         #region Declaration
 
-        private readonly ICosmosRepository _cosmosRepository;
+        //private readonly ICosmosRepository _cosmosRepository;
         private const string ContainerName = "usersContainer";
-
+        private readonly IRepository<GavUser> _repository;
+        private readonly CosmosClient _client;
+        private const string databaseName = "groupauditDB";
         #endregion
 
         #region Constructor
-        public UserRepository(ICosmosRepository cosmosRepository)
+        public UserRepository(IRepository<GavUser> repository, CosmosClient client)
         {
-            _cosmosRepository = cosmosRepository;
+            //_cosmosRepository = cosmosRepository;
+            _repository = repository;
+            _client= client;
         }
         #endregion
 
@@ -28,7 +32,7 @@ namespace CosmosDbDemo.Repository
         /// </summary>
         /// <param name="userRequest"></param>
         /// <returns></returns>
-        public async Task<GavUser> AddAsync(GavUser userRequest)
+        public async Task<GavUser> AddAsync(string containerName, GavUser userRequest)
         {
             if (string.IsNullOrEmpty(userRequest.userId))
             {
@@ -38,7 +42,7 @@ namespace CosmosDbDemo.Repository
             {
                 userRequest.id = Guid.NewGuid().ToString();
             }
-            return await _cosmosRepository.AddAsync(ContainerName, userRequest);
+            return await _repository.AddAsync(containerName, userRequest);
         }
         #endregion
 
@@ -47,9 +51,9 @@ namespace CosmosDbDemo.Repository
         /// GetItemsAsync
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<GavUser>> GetAllAsync()
+        public async Task<IEnumerable<GavUser>> GetAllAsync(string containerName)
         {
-            return await _cosmosRepository.GetAllAsync<GavUser>(ContainerName);
+            return await _repository.GetAllAsync(containerName);
         }
         #endregion
 
@@ -60,13 +64,13 @@ namespace CosmosDbDemo.Repository
         /// <param name="id"></param>
         /// <param name="userRequest"></param>
         /// <returns></returns>
-        public async Task<GavUser> UpdateAsync(string id, GavUser userRequest)
+        public async Task<GavUser> UpdateAsync(string containerName,string id, GavUser userRequest)
         {
             GavUser response = new GavUser();
             try
             {
                 // Fetch the existing document by id and partition key
-                var existingUser = await GetByIdAsync(userRequest.id, userRequest.userId);
+                var existingUser = await GetByIdAsync(containerName,userRequest.id, userRequest.userId);
 
                 // If the document is found, we can update it
                 //var existingUser = userResponse.Resource;
@@ -77,7 +81,7 @@ namespace CosmosDbDemo.Repository
                     existingUser.userdetails = userRequest.userdetails;
                     existingUser.engagement = userRequest.engagement;
                     
-                    response = await _cosmosRepository.UpdateAsync(ContainerName, userRequest.userId, existingUser);
+                    response = await _repository.UpdateAsync(containerName, userRequest.userId, existingUser);
                     //  await _container.ReplaceItemAsync(existingUser, userRequest.id, new PartitionKey(userRequest.userId));
                 }
             }
@@ -99,12 +103,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="userId"></param>
         /// <returns></returns>
 
-        public async Task<GavUser> GetByIdAsync(string id, string userId)
+        public async Task<GavUser> GetByIdAsync(string containerName,string id, string userId)
         {
             try
             {
                 // Fetch the document by id and partition key
-                return await _cosmosRepository.GetByIdAsync<GavUser>(ContainerName, id, userId);
+                return await _repository.GetByIdAsync(ContainerName, id, userId);
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
@@ -122,12 +126,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="id"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public async Task<bool> DeleteAsync(string id, string userId)
+        public async Task<bool> DeleteAsync(string containerName, string id, string userId)
         {
             try
             {
                 // Attempt to delete the document using id and partition key
-                await _cosmosRepository.DeleteAsync<GavUser>(ContainerName, id, userId);
+                await _repository.DeleteAsync(ContainerName, id, userId);
 
                 return true;
             }
@@ -141,5 +145,67 @@ namespace CosmosDbDemo.Repository
             }
         }
         #endregion
+
+        public async Task<IEnumerable<GavUser>> GetUsersByUsernameAsync(string username)
+        {
+            var query = "SELECT * FROM c WHERE c.username = @username";
+            var parameters = new Dictionary<string, object>
+    {
+        { "@username", username }
+    };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<GavUser>> GetUsersByRegionAsync(string region)
+        {
+            var query = "SELECT * FROM c WHERE c.userdetails.region = @region";
+            var parameters = new Dictionary<string, object>
+    {
+        { "@region", region }
+    };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<GavUser>> GetUsersByEngagementRoleAsync(string role)
+        {
+            var query = "SELECT * FROM c WHERE ARRAY_CONTAINS(c.engagement, { \"role\": @role }, true)";
+            var parameters = new Dictionary<string, object>
+    {
+        { "@role", role }
+    };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<GavUser>> GetUsersByEngagementStatusAsync(string status)
+        {
+            var query = "SELECT * FROM c WHERE ARRAY_CONTAINS(c.engagement, { \"status\": @status }, true)";
+            var parameters = new Dictionary<string, object>
+    {
+        { "@status", status }
+    };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<GavUser>> QueryAsync(string containerName, string query, Dictionary<string, object> parameters)
+        {
+            var container = _client.GetContainer(databaseName, containerName);
+            var queryDefinition = new QueryDefinition(query);
+
+            foreach (var param in parameters)
+            {
+                queryDefinition.WithParameter(param.Key, param.Value);
+            }
+
+            var iterator = container.GetItemQueryIterator<GavUser>(queryDefinition);
+            var results = new List<GavUser>();
+
+            while (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync();
+                results.AddRange(response);
+            }
+            return results;
+        }
+
     }
 }

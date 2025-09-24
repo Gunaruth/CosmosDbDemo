@@ -6,21 +6,22 @@ using System.Net;
 using static Azure.Core.HttpHeader;
 namespace CosmosDbDemo.Repository
 {
-    public class CommunicationRepository : IRepository<CommunicationDetails>
+    public class CommunicationRepository : ICommunicationRepository
     {
         #region Declaration
 
-        private readonly Container _container;
-
-        private readonly ICosmosRepository _cosmosRepository;
+        //private readonly ICosmosRepository _repository;
         private const string ContainerName = "Communication";
-
+        private readonly IRepository<CommunicationDetails> _repository;
+        private readonly CosmosClient _client;
+        private const string databaseName = "groupauditDB";
         #endregion
 
         #region Constructor
-        public CommunicationRepository(ICosmosRepository cosmosRepository)
+        public CommunicationRepository(IRepository<CommunicationDetails> repository, CosmosClient client)
         {
-            _cosmosRepository = cosmosRepository;
+            _repository = repository;
+            _client = client;
         }
         #endregion
 
@@ -30,7 +31,7 @@ namespace CosmosDbDemo.Repository
         /// </summary>
         /// <param name="chatRequest"></param>
         /// <returns></returns>
-        public async Task<CommunicationDetails> AddAsync(CommunicationDetails chatRequest)
+        public async Task<CommunicationDetails> AddAsync(string containerName, CommunicationDetails chatRequest)
         {
             if (string.IsNullOrEmpty(chatRequest.chatId))
             {
@@ -40,19 +41,21 @@ namespace CosmosDbDemo.Repository
             {
                 chatRequest.id = Guid.NewGuid().ToString();
             }
-            return await _cosmosRepository.AddAsync(ContainerName, chatRequest);
+            return await _repository.AddAsync(ContainerName, chatRequest);
         }
         #endregion
+
         #region Get Communication Details
         /// <summary>
         /// GetItemsAsync
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<CommunicationDetails>> GetAllAsync()
+        public async Task<IEnumerable<CommunicationDetails>> GetAllAsync(string containerName)
         {
-            return await _cosmosRepository.GetAllAsync<CommunicationDetails>(ContainerName);
+            return await _repository.GetAllAsync(ContainerName);
         }
         #endregion
+
         #region Update ChatHistory
         /// <summary>
         /// UpdateUserDetail
@@ -60,14 +63,14 @@ namespace CosmosDbDemo.Repository
         /// <param name="chatId"></param>
         /// <param name="newMessage"></param>
         /// <returns></returns>
-        public async Task<CommunicationDetails> UpdateAsync(string chatId, CommunicationDetails comm)
+        public async Task<CommunicationDetails> UpdateAsync(string containerName, string chatId, CommunicationDetails comm)
         {
             CommunicationDetails response = null;
             try
             {
                 // 1. Read existing chat document by chatId and partitionKey (usually chatId or something else)
                 var chatResponse =
-                    await GetByIdAsync(comm.id, chatId);
+                    await GetByIdAsync(containerName,comm.id, chatId);
 
                 var existingChat = chatResponse;
 
@@ -83,7 +86,7 @@ namespace CosmosDbDemo.Repository
                     existingChat.Messages.AddRange(comm.Messages);
 
                     // 4. Update the chat document in Cosmos DB (replace)
-                    response = await _cosmosRepository.UpdateAsync(ContainerName, existingChat.chatId, existingChat);
+                    response = await _repository.UpdateAsync(containerName, existingChat.chatId, existingChat);
 
                 }
             }
@@ -104,12 +107,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="chatId"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public async Task<bool> DeleteAsync(string chatId, string userId)
+        public async Task<bool> DeleteAsync(string containerName, string chatId, string userId)
         {
             try
             {
                 // Attempt to delete the document using id and partition key
-                await _cosmosRepository.DeleteAsync<CommunicationDetails>(ContainerName, chatId, userId);
+                await _repository.DeleteAsync(containerName, chatId, userId);
 
                 return true;
             }
@@ -123,7 +126,8 @@ namespace CosmosDbDemo.Repository
             }
         }
         #endregion
-          #region Get UserById And UserId
+
+        #region Get UserById And UserId
         /// <summary>
         /// GetUserByIdAndUserIdAsync
         /// </summary>
@@ -131,12 +135,12 @@ namespace CosmosDbDemo.Repository
         /// <param name="userId"></param>
         /// <returns></returns>
 
-        public async Task<CommunicationDetails> GetByIdAsync(string id, string chatid)
+        public async Task<CommunicationDetails> GetByIdAsync(string containerName, string id, string chatid)
         {
             try
             {
                 // Fetch the document by id and partition key
-                return await _cosmosRepository.GetByIdAsync<CommunicationDetails>(ContainerName, id, chatid);
+                return await _repository.GetByIdAsync(containerName, id, chatid);
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
@@ -146,5 +150,62 @@ namespace CosmosDbDemo.Repository
             }
         }
         #endregion
+
+        public async Task<IEnumerable<CommunicationDetails>> GetByStatusAsync(string status)
+        {
+            var query = "SELECT * FROM c WHERE c.status = @status";
+            var parameters = new Dictionary<string, object> { { "@status", status } };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<CommunicationDetails>> GetByParticipantRoleAsync(string role)
+        {
+            var query = "SELECT * FROM c WHERE ARRAY_CONTAINS(c.participants, { \"role\": @role }, true)";
+            var parameters = new Dictionary<string, object> { { "@role", role } };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<CommunicationDetails>> GetByParticipantUserIdAsync(string userId)
+        {
+            var query = "SELECT * FROM c WHERE ARRAY_CONTAINS(c.participants, { \"userId\": @userId }, true)";
+            var parameters = new Dictionary<string, object> { { "@userId", userId } };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<CommunicationDetails>> GetByMessageSenderAsync(string senderId)
+        {
+            var query = "SELECT * FROM c WHERE EXISTS(SELECT VALUE m FROM m IN c.messages WHERE m.senderId = @senderId)";
+            var parameters = new Dictionary<string, object> { { "@senderId", senderId } };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<CommunicationDetails>> GetByVisibleToUserAsync(string userId)
+        {
+            var query = "SELECT * FROM c WHERE EXISTS(SELECT VALUE m FROM m IN c.messages WHERE ARRAY_CONTAINS(m.visibleTo, @userId))";
+            var parameters = new Dictionary<string, object> { { "@userId", userId } };
+            return await _repository.QueryAsync(ContainerName, query, parameters);
+        }
+
+        public async Task<IEnumerable<CommunicationDetails>> QueryAsync(string containerName, string query, Dictionary<string, object> parameters)
+        {
+            var container = _client.GetContainer(databaseName, containerName);
+            var queryDefinition = new QueryDefinition(query);
+
+            foreach (var param in parameters)
+            {
+                queryDefinition.WithParameter(param.Key, param.Value);
+            }
+
+            var iterator = container.GetItemQueryIterator<CommunicationDetails>(queryDefinition);
+            var results = new List<CommunicationDetails>();
+
+            while (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync();
+                results.AddRange(response);
+            }
+            return results;
+        }
+
     }
 }

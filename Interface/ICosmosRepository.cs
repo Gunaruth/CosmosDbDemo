@@ -1,4 +1,6 @@
-﻿namespace CosmosDbDemo.Interface
+﻿using Swashbuckle.AspNetCore.SwaggerGen;
+
+namespace CosmosDbDemo.Interface
 {
     public interface ICosmosRepository
     {
@@ -7,6 +9,7 @@
         Task<T> AddAsync<T>(string containerName, T entity);
         Task<T> UpdateAsync<T>(string containerName, string id, T entity);
         Task<bool> DeleteAsync<T>(string containerName, string id, string userId);
+        Task<IEnumerable<T>> QueryAsync<T>(string containerName, string query, Dictionary<string, object> parameters);
     }
 
 }

@@ -9,9 +9,9 @@ namespace CosmosDbDemo.Controllers
     [Route("api/[controller]")]
     public class CommunicationController : ControllerBase
     {
-        private readonly IRepository<CommunicationDetails> _communicationRepository;
-
-        public CommunicationController(IRepository<CommunicationDetails> communicationRepository)
+        private readonly ICommunicationRepository _communicationRepository;
+        private const string containerName = "componentContainer";
+        public CommunicationController(ICommunicationRepository communicationRepository)
         {
             _communicationRepository = communicationRepository;
         }
@@ -20,7 +20,7 @@ namespace CosmosDbDemo.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CommunicationDetails>>> GetAll()
         {
-            var result = await _communicationRepository.GetAllAsync();
+            var result = await _communicationRepository.GetAllAsync(containerName);
             return Ok(result);
         }
 
@@ -28,7 +28,7 @@ namespace CosmosDbDemo.Controllers
         [HttpGet("{id}/{chatId}")]
         public async Task<IActionResult> GetById(string id, string chatId)
         {
-            var result = await _communicationRepository.GetByIdAsync(id, chatId);
+            var result = await _communicationRepository.GetByIdAsync(containerName,id, chatId);
             if (result == null)
                 return NotFound($"Document with id '{id}' and chatId '{chatId}' not found.");
 
@@ -39,7 +39,7 @@ namespace CosmosDbDemo.Controllers
         [HttpPost]
         public async Task<IActionResult> Add(CommunicationDetails chat)
         {
-            var result = await _communicationRepository.AddAsync(chat);
+            var result = await _communicationRepository.AddAsync(containerName, chat);
             //return CreatedAtAction(nameof(GetById), new { id = result.id, chatId = result.chatId }, result);
             return Ok(result);
         }
@@ -48,7 +48,7 @@ namespace CosmosDbDemo.Controllers
         [HttpPut("{chatId}")]
         public async Task<IActionResult> Update(string chatId, CommunicationDetails chat)
         {
-            var result = await _communicationRepository.UpdateAsync(chatId, chat);
+            var result = await _communicationRepository.UpdateAsync(containerName, chatId, chat);
 
             if (result == null)
                 return NotFound($"Unable to update: document with chatId '{chatId}' not found.");
@@ -60,11 +60,48 @@ namespace CosmosDbDemo.Controllers
         [HttpDelete("{id}/{chatId}")]
         public async Task<IActionResult> Delete(string id, string chatId)
         {
-            var deleted = await _communicationRepository.DeleteAsync(id, chatId);
+            var deleted = await _communicationRepository.DeleteAsync(containerName, id, chatId);
             if (!deleted)
                 return NotFound($"Document with id '{id}' and chatId '{chatId}' not found.");
 
             return NoContent();
         }
+
+
+        [HttpGet("by-status/{status}")]
+        public async Task<IActionResult> GetByStatus(string status)
+        {
+            var result = await _communicationRepository.GetByStatusAsync(status);
+            return Ok(result);
+        }
+
+        [HttpGet("by-participant-role/{role}")]
+        public async Task<IActionResult> GetByParticipantRole(string role)
+        {
+            var result = await _communicationRepository.GetByParticipantRoleAsync(role);
+            return Ok(result);
+        }
+
+        [HttpGet("by-participant-user/{userId}")]
+        public async Task<IActionResult> GetByParticipantUserId(string userId)
+        {
+            var result = await _communicationRepository.GetByParticipantUserIdAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpGet("by-message-sender/{senderId}")]
+        public async Task<IActionResult> GetByMessageSender(string senderId)
+        {
+            var result = await _communicationRepository.GetByMessageSenderAsync(senderId);
+            return Ok(result);
+        }
+
+        [HttpGet("by-visible-to/{userId}")]
+        public async Task<IActionResult> GetByVisibleToUser(string userId)
+        {
+            var result = await _communicationRepository.GetByVisibleToUserAsync(userId);
+            return Ok(result);
+        }
+
     }
 }

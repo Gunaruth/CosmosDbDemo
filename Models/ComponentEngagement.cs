@@ -12,7 +12,8 @@
         public Location location { get; set; }
         public List<ComponentLinked> groupLinked { get; set; }
         public List<OpinionOption> opinionOptions { get; set; }
-        public List<TeamMember> team { get; set; }
+        public string engagementName { get; set; }
+        // public List<TeamMember> team { get; set; }
     }
     public class OpinionOption
     {

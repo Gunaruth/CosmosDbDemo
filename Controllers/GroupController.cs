@@ -9,8 +9,9 @@ namespace CosmosDbDemo.Controllers
     [ApiController]
     public class GroupController : ControllerBase
     {
-        private readonly IRepository<AuditEngagement> _repository;
-        public GroupController(IRepository<AuditEngagement> repository)
+        private readonly IGroupRepository _repository;
+        private const string containerName = "groupContainer";
+        public GroupController(IGroupRepository repository)
         {
             _repository = repository;
         }
@@ -20,7 +21,7 @@ namespace CosmosDbDemo.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetAllGroups")]
-        public async Task<IActionResult> Get() => Ok(await _repository.GetAllAsync());
+        public async Task<IActionResult> Get() => Ok(await _repository.GetAllAsync(containerName));
         #endregion
 
         #region Add Group
@@ -32,7 +33,7 @@ namespace CosmosDbDemo.Controllers
         [HttpPost("AddGroup")]
         public async Task<IActionResult> AddGroup(AuditEngagement auditEngagement)
         {
-            var userResponse = await _repository.AddAsync(auditEngagement);
+            var userResponse = await _repository.AddAsync(containerName,auditEngagement);
             return CreatedAtAction(nameof(Get), new { id = auditEngagement.id }, auditEngagement);
         }
         #endregion
@@ -48,7 +49,7 @@ namespace CosmosDbDemo.Controllers
         [HttpPut("UpdateGroup")]
         public async Task<IActionResult> UpdateGroup(AuditEngagement auditEngagement)
         {
-            var updated = await _repository.UpdateAsync(auditEngagement.id, auditEngagement);
+            var updated = await _repository.UpdateAsync(containerName, auditEngagement.id, auditEngagement);
             return updated == null ? NotFound() : Ok(updated);
         }
         #endregion
@@ -63,7 +64,7 @@ namespace CosmosDbDemo.Controllers
         [HttpGet("{id}/{engagementId}")]
         public async Task<IActionResult> GetGroupById(string id, string engagementId)
         {
-            var item = await _repository.GetByIdAsync(id, engagementId);
+            var item = await _repository.GetByIdAsync(containerName, id, engagementId);
             return item == null ? NotFound() : Ok(item);
         }
         #endregion
@@ -79,7 +80,7 @@ namespace CosmosDbDemo.Controllers
         [HttpDelete("{id}/{engagementId}")]
         public async Task<IActionResult> DeleteGroup(string id, string engagementId)
         {
-            bool isDeleted = await _repository.DeleteAsync(id, engagementId);
+            bool isDeleted = await _repository.DeleteAsync(containerName, id, engagementId);
 
             if (isDeleted)
             {
@@ -91,5 +92,50 @@ namespace CosmosDbDemo.Controllers
             }
         }
         #endregion
+
+        #region Get Status
+        /// <summary>
+        /// GetByStatus
+        /// </summary>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        [HttpGet("by-status/{status}")]
+        public async Task<IActionResult> GetByStatus(string status)
+        {
+            var temp = await _repository.GetAllAsync(containerName);
+            var result = await _repository.GetByStatusAsync(status);
+            return Ok(result);
+        }
+        #endregion
+
+
+        [HttpGet("by-createdby/{email}")]
+        public async Task<IActionResult> GetByCreatedBy(string email)
+        {
+            var result = await _repository.GetByCreatedByAsync(email);
+            return Ok(result);
+        }
+
+        [HttpGet("by-component-status/{componentStatus}")]
+        public async Task<IActionResult> GetByComponentStatus(string componentStatus)
+        {
+            var result = await _repository.GetByComponentStatusAsync(componentStatus);
+            return Ok(result);
+        }
+
+        [HttpGet("by-team-role/{role}")]
+        public async Task<IActionResult> GetByTeamRole(string role)
+        {
+            var result = await _repository.GetByTeamRoleAsync(role);
+            return Ok(result);
+        }
+
+        [HttpGet("by-location")]
+        public async Task<IActionResult> GetByLocation([FromQuery] double lat, [FromQuery] double lng)
+        {
+            var result = await _repository.GetByLocationAsync(lat, lng);
+            return Ok(result);
+        }
+
     }
 }

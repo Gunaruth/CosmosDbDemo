@@ -1,13 +1,16 @@
-﻿using System.Reflection;
+﻿using CosmosDbDemo.Interface;
+using CosmosDbDemo.Models;
+using System.Reflection;
 
 namespace CosmosDbDemo.Interfaces
 {
-    public interface IUserRepository
+    public interface IUserRepository : IRepository<GavUser>
     {
-        Task<IEnumerable<Models.GavUser>> GetUsers();
-        Task<Models.GavUser> AdduserDetail(Models.GavUser userRequest);
-        Task<Models.GavUser> UpdateUserDetail(Models.GavUser userRequest);
-        Task<Models.GavUser> GetUserByIdAndUserId(string id, string userId);
-        Task<bool> DeleteUser(string id, string userId);
+
+        Task<IEnumerable<GavUser>> GetUsersByUsernameAsync(string username);
+        Task<IEnumerable<GavUser>> GetUsersByRegionAsync(string region);
+        Task<IEnumerable<GavUser>> GetUsersByEngagementRoleAsync(string role);
+        Task<IEnumerable<GavUser>> GetUsersByEngagementStatusAsync(string status);
+
     }
 }

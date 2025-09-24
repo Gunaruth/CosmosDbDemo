@@ -12,8 +12,8 @@
         public string opinionId { get; set; }
         public Location location { get; set; }
         public List<ComponentLinked> componentsLinked { get; set; }
-        public List<TeamMember> team { get; set; }
-        public string userId { get; set; }
+        //public List<TeamMember> team { get; set; }
+        //public string userId { get; set; }
     }
 
     public class Location
